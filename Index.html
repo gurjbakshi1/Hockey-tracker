@@ -1,0 +1,276 @@
+Hockey stats tracker
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hockey Stat Pro</title>
+    <style>
+        :root { --primary-color: #2b6cb0; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* Dashboard & Settings */
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .stat-card { background: var(--primary-color); color: white; padding: 10px; border-radius: 8px; text-align: center; }
+        .stat-card span { display: block; font-size: 24px; font-weight: bold; }
+        .stat-card label { font-size: 10px; text-transform: uppercase; opacity: 0.9; }
+
+        .settings, .roster-mgmt, .notes-section, .summary-section { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        .row { display: flex; gap: 8px; margin-bottom: 8px; }
+        input, select, textarea { padding: 10px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 14px; width: 100%; box-sizing: border-box; }
+        
+        h2 { text-align: center; color: var(--primary-color); margin: 5px 0; font-size: 20px; }
+        h3 { font-size: 14px; margin: 0 0 10px 0; color: #4a5568; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        .input-group input { flex: 1; font-size: 16px; }
+        
+        button { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; }
+        .btn-add { background: var(--primary-color); color: white; padding: 0 15px; }
+        .btn-action { background: #4a5568; color: white; padding: 8px 12px; font-size: 12px; flex: 1; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #edf2f7; padding: 8px; font-size: 10px; color: #4a5568; text-transform: uppercase; }
+        td { border-bottom: 1px solid #edf2f7; padding: 8px 2px; text-align: center; }
+        
+        .player-cell { display: flex; align-items: center; gap: 5px; text-align: left; }
+        .order-btns { display: flex; flex-direction: column; gap: 2px; }
+        .btn-order { background: #e2e8f0; font-size: 10px; padding: 2px 4px; border-radius: 3px; }
+        
+        .stat-controls { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .plus-minus { display: flex; gap: 2px; }
+        .btn-plus { background: var(--primary-color); color: white; width: 34px; height: 34px; font-size: 18px; }
+        .btn-minus { background: #edf2f7; color: #4a5568; width: 30px; height: 30px; font-size: 16px; }
+        
+        /* Box Score View */
+        .summary-table { font-size: 13px; }
+        .summary-table td { padding: 5px; background: white; }
+        .summary-table .name-col { text-align: left; font-weight: bold; }
+
+        .footer { margin-top: 10px; border-top: 1px solid #eee; padding-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .btn-csv { background: #2d3748; color: white; padding: 15px; border-radius: 8px; width: 100%; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="settings">
+        <div class="row">
+            <input type="text" id="teamNameInput" placeholder="Team Name" oninput="updateBranding()" style="flex: 2;">
+            <input type="color" id="colorPicker" value="#2b6cb0" oninput="updateBranding()" style="width: 45px; height: 40px; padding: 2px; border: none; background: none;">
+        </div>
+        <div class="row"><input type="date" id="gameDate" oninput="updateBranding()"></div>
+    </div>
+
+    <div class="dashboard">
+        <div class="stat-card"><span id="totalGoals">0</span><label>Team Goals</label></div>
+        <div class="stat-card"><span id="totalSaves">0</span><label>Goalie Saves</label></div>
+    </div>
+
+    <div class="roster-mgmt">
+        <div class="row">
+            <select id="rosterSelect" style="flex: 2;"><option value="">-- Load Team --</option></select>
+            <button class="btn-action" onclick="loadRoster()">Load</button>
+        </div>
+        <div class="row">
+            <button class="btn-action" style="background:#2f855a;" onclick="saveRoster()">Save Team</button>
+            <button class="btn-action" style="background:#e53e3e;" onclick="deleteRoster()">Delete Team</button>
+        </div>
+    </div>
+
+    <h2 id="teamDisplay">Hockey Tracker</h2>
+    
+    <div class="input-group">
+        <input type="text" id="playerName" placeholder="Player Name or #">
+        <button class="btn-add" onclick="addPlayer()">Add</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align:left">Player</th>
+                <th>G</th>
+                <th>A</th>
+                <th>S</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="playerList"></tbody>
+    </table>
+
+    <div class="summary-section">
+        <h3>📊 Compact Box Score</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th class="name-col">Player</th>
+                    <th>G</th>
+                    <th>A</th>
+                    <th>S</th>
+                </tr>
+            </thead>
+            <tbody id="summaryList"></tbody>
+        </table>
+    </div>
+
+    <div class="notes-section">
+        <label style="font-size: 10px; text-transform: uppercase; color: #4a5568; font-weight: bold;">Game Notes</label>
+        <textarea id="gameNotes" placeholder="Opponent, Rink, Score, etc..." oninput="updateBranding()"></textarea>
+    </div>
+
+    <div class="footer">
+        <button class="btn-csv" onclick="downloadCSV()">📥 Download CSV Report</button>
+        <button style="background:none; color:grey; font-size:11px; border:none; padding:10px;" onclick="resetStatsOnly()">Reset Stats for New Game</button>
+    </div>
+</div>
+
+<script>
+    let players = JSON.parse(localStorage.getItem('hockeyStats')) || [];
+    let savedRosters = JSON.parse(localStorage.getItem('savedRosters')) || {};
+    let teamName = localStorage.getItem('teamName') || "";
+    let teamColor = localStorage.getItem('teamColor') || "#2b6cb0";
+    let gameNotes = localStorage.getItem('gameNotes') || "";
+    const today = new Date().toISOString().split('T')[0];
+    let gameDate = localStorage.getItem('gameDate') || today;
+
+    function updateBranding() {
+        teamName = document.getElementById('teamNameInput').value;
+        teamColor = document.getElementById('colorPicker').value;
+        gameDate = document.getElementById('gameDate').value;
+        gameNotes = document.getElementById('gameNotes').value;
+        document.documentElement.style.setProperty('--primary-color', teamColor);
+        document.getElementById('teamDisplay').innerText = teamName || "Hockey Tracker";
+        localStorage.setItem('teamName', teamName);
+        localStorage.setItem('teamColor', teamColor);
+        localStorage.setItem('gameDate', gameDate);
+        localStorage.setItem('gameNotes', gameNotes);
+    }
+
+    function render() {
+        const list = document.getElementById('playerList');
+        const summary = document.getElementById('summaryList');
+        list.innerHTML = '';
+        summary.innerHTML = '';
+        let goals = 0; let saves = 0;
+
+        players.forEach((p, i) => {
+            goals += p.g;
+            saves += p.s;
+            
+            // Render Active List
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><div class="player-cell"><div class="order-btns"><button class="btn-order" onclick="move(${i},-1)">▲</button><button class="btn-order" onclick="move(${i},1)">▼</button></div><span style="font-weight:600;">${p.name}</span></div></td>
+                <td><div class="stat-controls"><b>${p.g}</b><div class="plus-minus"><button class="btn-minus" onclick="updateStat(${i},'g',-1)">-</button><button class="btn-plus" onclick="updateStat(${i},'g',1)">+</button></div></div></td>
+                <td><div class="stat-controls"><b>${p.a}</b><div class="plus-minus"><button class="btn-minus" onclick="updateStat(${i},'a',-1)">-</button><button class="btn-plus" onclick="updateStat(${i},'a',1)">+</button></div></div></td>
+                <td><div class="stat-controls"><b>${p.s}</b><div class="plus-minus"><button class="btn-minus" onclick="updateStat(${i},'s',-1)">-</button><button class="btn-plus" onclick="updateStat(${i},'s',1)">+</button></div></div></td>
+                <td><button onclick="removePlayer(${i})" style="background:none; color:#e53e3e; border:none; font-size: 16px;">✕</button></td>
+            `;
+            list.appendChild(row);
+
+            // Render Compact Summary List
+            const sRow = document.createElement('tr');
+            sRow.innerHTML = `<td class="name-col">${p.name}</td><td>${p.g}</td><td>${p.a}</td><td>${p.s}</td>`;
+            summary.appendChild(sRow);
+        });
+
+        document.getElementById('totalGoals').innerText = goals;
+        document.getElementById('totalSaves').innerText = saves;
+        localStorage.setItem('hockeyStats', JSON.stringify(players));
+        updateRosterDropdown();
+    }
+
+    function addPlayer() {
+        const input = document.getElementById('playerName');
+        if (input.value.trim()) {
+            players.push({ name: input.value.trim(), g: 0, a: 0, s: 0 });
+            input.value = '';
+            render();
+        }
+    }
+
+    function updateStat(i, k, v) {
+        players[i][k] = Math.max(0, players[i][k] + v);
+        render();
+    }
+
+    function move(index, direction) {
+        let newIndex = index + direction;
+        if (newIndex >= 0 && newIndex < players.length) {
+            [players[index], players[newIndex]] = [players[newIndex], players[index]];
+            render();
+        }
+    }
+
+    function saveRoster() {
+        const name = prompt("Enter a name for this roster:");
+        if (name) {
+            savedRosters[name] = players.map(p => ({ name: p.name, g: 0, a: 0, s: 0 }));
+            localStorage.setItem('savedRosters', JSON.stringify(savedRosters));
+            render();
+        }
+    }
+
+    function loadRoster() {
+        const name = document.getElementById('rosterSelect').value;
+        if (name && confirm(`Load "${name}"? Unsaved stats will be lost.`)) {
+            players = JSON.parse(JSON.stringify(savedRosters[name]));
+            document.getElementById('teamNameInput').value = name;
+            updateBranding();
+            render();
+        }
+    }
+
+    function deleteRoster() {
+        const name = document.getElementById('rosterSelect').value;
+        if (name && confirm(`Delete "${name}"?`)) {
+            delete savedRosters[name];
+            localStorage.setItem('savedRosters', JSON.stringify(savedRosters));
+            render();
+        }
+    }
+
+    function updateRosterDropdown() {
+        const select = document.getElementById('rosterSelect');
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">-- Load Team --</option>';
+        Object.keys(savedRosters).forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.innerText = name;
+            select.appendChild(opt);
+        });
+        select.value = currentVal;
+    }
+
+    function resetStatsOnly() {
+        if(confirm("Keep roster but reset scores to zero?")) {
+            players.forEach(p => { p.g = 0; p.a = 0; p.s = 0; });
+            document.getElementById('gameNotes').value = "";
+            updateBranding();
+            render();
+        }
+    }
+
+    function removePlayer(i) { players.splice(i, 1); render(); }
+
+    function downloadCSV() {
+        let csv = `Game Date,${gameDate}\nTeam,${teamName}\nNotes,"${gameNotes.replace(/"/g, '""')}"\n\n`;
+        csv += "Player,Goals,Assists,Saves\n" + players.map(p => `${p.name},${p.g},${p.a},${p.s}`).join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${teamName}_${gameDate}.csv`;
+        a.click();
+    }
+
+    document.getElementById('teamNameInput').value = teamName;
+    document.getElementById('colorPicker').value = teamColor;
+    document.getElementById('gameDate').value = gameDate;
+    document.getElementById('gameNotes').value = gameNotes;
+    updateBranding();
+    render();
+</script>
+</body>
+</html>
